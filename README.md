@@ -15,6 +15,8 @@ this is an early early version that is created for my private needs, but feel fr
 `install.sh` will create a symlink towards the `presentio.py` script by
 the name `presentio`.
 
+Also make sure you have `pandoc` and `LaTeX` installed on your system.
+
 ### ~~Windows~~
 Not officially supported at the moment. Feel free to support it.
 
@@ -27,7 +29,7 @@ Run the `uninstall.sh` script.
 To get the help menu use the `-h` or `--help`:
 ```txt
 $ presentio -h
-usage: presentio [-h] [-a AUTHOR] [-t TITLE] [-f FILENAME]
+usage: presentio [-h] [-a AUTHOR] [-t TITLE] [-b] [-f FILENAME]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -35,8 +37,10 @@ optional arguments:
                         Author of the presentation
   -t TITLE, --title TITLE
                         Title of the presentation
+  -b, --bibliography    Add the bibliography support
   -f FILENAME, --filename FILENAME
                         Name of the file to be created
+
 ```
 
 If you hate reading the docs, just run the script
@@ -86,3 +90,17 @@ presentio -a 'Nemanja Mićović' -t 'Tutorial for present.io' -f slides
  Edited compile.sh to be executable. 
  Your document Nemanja Mićović is ready! Enjoy!
 ```
+
+And if you wish to add the bibliography support in slides, use the `-b` (`--bibliography`) flag
+
+```txt
+presentio -a 'Nemanja Mićović' -t 'Tutorial for present.io' -f slides -b
+ Created slides.md. 
+ Created images directory. 
+ Created literature.bib. 
+ Created compile.sh. 
+ Edited compile.sh to be executable. 
+ Your document Tutorial for present.io is ready! Enjoy! 
+```
+
+To get your slides simply call the `compile.sh` script.

@@ -7,37 +7,8 @@ import stat
 import argparse
 from inspect import cleandoc
 from typing import Dict
-
-
-class bcolors:
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
-
-
-def regular_msg(msg: str) -> None:
-    """Prints out a blue colored message to standard output."""
-    print(f"{bcolors.OKBLUE} {msg} {bcolors.ENDC}")
-
-
-def success_msg(msg: str) -> None:
-    """Prints out a green colored message to standard output."""
-    print(f"{bcolors.OKGREEN} {msg} {bcolors.ENDC}")
-
-
-def fail_msg(msg: str) -> None:
-    """Prints out a red colored message to standard output."""
-    print(f"{bcolors.FAIL} {msg} {bcolors.ENDC}")
-
-
-def warn_msg(msg: str) -> None:
-    """Prints out a yellowish colored message to standard output."""
-    print(f"{bcolors.WARNING} {msg} {bcolors.ENDC}")
+from pretty_print import regular_msg, warn_msg, fail_msg, success_msg
+from document_data import DocumentData
 
 
 def file_exists(file_name: str) -> bool:
@@ -71,42 +42,17 @@ def ensure_user_is_not_a_moron(detected_file_name: str) -> bool:
         return False
 
 
-class DocumentData:
-    """
-    Represents a data object that is used to fill in the template.
-    """
-
-    def __init__(self, author, title, file_name, directory):
-        self.author = author
-        self.title = title
-        self.file_name = file_name
-        self.directory = directory
-
-    def __repr__(self):
-        return f"[document] author={self.author} title={self.title} file_name={self.file_name} directory={self.directory}"
-
-    def __str__(self):
-        return self.__repr__()
-
-
-def get_document_info() -> DocumentData:
+def get_document_info(args) -> DocumentData:
     """
     Reads the input of the user from standard input
     and creates a required object.
     """
 
-    parser = argparse.ArgumentParser()
-    parser.prog = 'presentio'
-    parser.add_argument('-a', '--author', help='Author of the presentation')
-    parser.add_argument('-t', '--title', help='Title of the presentation')
-    parser.add_argument('-f', '--filename',
-                        help='Name of the file to be created')
-    args = parser.parse_args()
-
     author: str = args.author if args.author else input(
         'Author of your presentation: ')
     title: str = args.title if args.title else input(
         'Title of your presentation: ')
+    bibliography: bool = True if args.bibliography else False
 
     # If use didn't give us a file name,
     # we create the file name out of the title.
@@ -121,12 +67,17 @@ def get_document_info() -> DocumentData:
     directory = os.getcwd()
 
     return DocumentData(
-        title,
         author,
+        title,
         file_name,
-        directory
+        directory,
+        bibliography,
     )
 
+def check_if_user_aborts_to_overwrite_the_file(target_file: str) -> None:
+    if file_exists(target_file) and not ensure_user_is_not_a_moron(target_file):
+        fail_msg("Aborted by the will of the user.")
+        sys.exit()
 
 def generate_md_template(data: DocumentData) -> None:
     """
@@ -134,22 +85,34 @@ def generate_md_template(data: DocumentData) -> None:
     """
 
     target_file: str = data.file_name + '.md'
+    check_if_user_aborts_to_overwrite_the_file(target_file)
 
-    if file_exists(target_file) and not ensure_user_is_not_a_moron(target_file):
-        # We abort
-        fail_msg("Aborted by the will of the user.")
-        sys.exit()
+    header_includes: str = r'''headerincludes: |
+        \newcommand{\theimage}[1]{\includegraphics[width=1\textwidth,height=0.9\textheight,keepaspectratio]{#1}}'''
+
+    literature_payload = """
+    ## Citing a resource
+    - The answer is 42! [@the42]
+
+    ## References
+    """ if data.bibliography else ''
 
     md_template: str = cleandoc(
-        f"""---
-        title: '{data.title}'
-        aspectratio: 169
-        author: {data.author}
-        urlcolor: cyan
-        colorlinks: true
-        ---
+    f"""---
+    title: '{data.title}'
+    aspectratio: 169
+    author: {data.author}
+    urlcolor: cyan
+    colorlinks: true
+    {header_includes}
+    ---
 
-        # {data.title}""")
+    # {data.title}
+
+    ## My First Slide
+    - Hello from {data.author}
+    - Thank you for using `presentio`! <3
+    {literature_payload}""")
 
     try:
         with open(target_file, 'w') as fid:
@@ -158,8 +121,8 @@ def generate_md_template(data: DocumentData) -> None:
             if not os.path.exists('images'):
                 os.mkdir('images')
             regular_msg(f"Created images directory.")
-    except IOError as e:
-        fail_msg(e)
+    except IOError as exception:
+        fail_msg(exception)
         fail_msg(f"Failed creating file {target_file}")
         sys.exit()
 
@@ -172,15 +135,20 @@ def generate_compile_file(data: DocumentData) -> str:
     file_name: str = data.file_name
     target_file: str = 'compile.sh'
 
-    if file_exists(target_file) and not ensure_user_is_not_a_moron(target_file):
-        # We abort
-        fail_msg("Aborted by the will of the user.")
-        sys.exit()
+    check_if_user_aborts_to_overwrite_the_file(target_file)
+
+    bib_payload: str = f""" \\
+            --filter pandoc-citeproc \\
+            --bibliography=literature.bib
+    """ if data.bibliography else ''
 
     compile_content: str = cleandoc(
         f"""#! /usr/bin/env bash
-        #pandoc -t beamer {data.file_name}.md  --pdf-engine=xelatex -V theme:metropolis -o {data.file_name}.pdf
-        pandoc -t beamer {data.file_name}.md  -V theme:metropolis -o {file_name}.pdf
+        # pandoc -t beamer {data.file_name}.md  --pdf-engine=xelatex -V theme:metropolis -o {data.file_name}.pdf
+        pandoc \\
+            -t beamer {data.file_name}.md \\
+            -V theme:metropolis \\
+            -o {file_name}.pdf {bib_payload}
         """)
 
     try:
@@ -198,9 +166,50 @@ def generate_compile_file(data: DocumentData) -> str:
         sys.exit()
 
 
+def generate_bibliography_file() -> None:
+    target_file: str = 'literature.bib'
+    check_if_user_aborts_to_overwrite_the_file(target_file)
+
+    payload: str = cleandoc("""
+    @article{the42,
+        added-at = {2012-01-27T14:41:50.000+0100},
+        author = {Adams, Douglas},
+        biburl = {https://www.bibsonomy.org/bibtex/2e170eb13993a56f57e814c7537caa316/nosebrain},
+        interhash = {2689edbe3de2f39388b4d16880b7fbe9},
+        intrahash = {e170eb13993a56f57e814c7537caa316},
+        keywords = {galaxy guide hitchhiker scifi},
+        timestamp = {2013-06-25T18:26:30.000+0200},
+        title = {The Hitchhiker's Guide to the Galaxy},
+        year = 1995
+    }
+    """)
+
+    try:
+        with open(target_file, 'w') as fid:
+            fid.write(payload)
+        regular_msg(f"Created {target_file}.")
+
+    except IOError as exc:
+        fail_msg(exc)
+        fail_msg(f'Failed creating {target_file}')
+        sys.exit()
+
+
 def main():
-    data: DocumentData = get_document_info()
+    parser = argparse.ArgumentParser()
+    parser.prog = 'presentio'
+    parser.add_argument('-a', '--author', help='Author of the presentation')
+    parser.add_argument('-t', '--title', help='Title of the presentation')
+    parser.add_argument('-b', '--bibliography',
+                        help='Add the bibliography support', action='store_true')
+    parser.add_argument('-f', '--filename',
+                        help='Name of the file to be created')
+    args = parser.parse_args()
+
+    data: DocumentData = get_document_info(args)
     generate_md_template(data)
+    if data.bibliography:
+        generate_bibliography_file()
     generate_compile_file(data)
     success_msg(f"Your document {data.title} is ready! Enjoy!")
 
