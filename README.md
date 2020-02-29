@@ -10,7 +10,8 @@ this is an early early version that is created for my private needs, but feel fr
 
 1. Fork the repo somewhere where you won't delete it.
 2. Run the `install.sh` script.
-3. Run it with `presentio` from command line
+3. Make sure to install python `pandoc-beamer-block` package
+4. Run it with `presentio` from command line
 
 `install.sh` will create a symlink towards the `presentio.py` script by
 the name `presentio`.

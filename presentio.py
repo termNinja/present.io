@@ -147,6 +147,8 @@ def generate_compile_file(data: DocumentData) -> str:
         # pandoc -t beamer {data.file_name}.md  --pdf-engine=xelatex -V theme:metropolis -o {data.file_name}.pdf
         pandoc \\
             -t beamer {data.file_name}.md \\
+            --filter pandoc-beamer-block \\
+            -V themeoptions\:subsectionpage=progressbar,block=fill \\
             -V theme:metropolis \\
             -o {file_name}.pdf {bib_payload}
         """)
