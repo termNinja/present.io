@@ -105,3 +105,15 @@ presentio -a 'Nemanja Mićović' -t 'Tutorial for present.io' -f slides -b
 ```
 
 To get your slides simply call the `compile.sh` script.
+
+### Automatic compile
+
+There are [multiple ways](https://superuser.com/questions/181517/how-to-execute-a-command-whenever-a-file-changes)
+to do this. As I am using neovim, I mostly just use this command inside vim:
+
+```
+:au BufWritePost myfile.md :silent !./compile.sh
+```
+
+which causes my lovely editor to run the `compile.sh` script whenever I save the file I'm writing.
+It also avoids any disk access compared to some different approaches like I've seen on internet.
